@@ -64,6 +64,9 @@ dependencies {
     testImplementation 'org.hamcrest:hamcrest:2.2'
     testImplementation 'org.hamcrest:hamcrest-library:2.2'
 
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2'
+
     // Agregar dependencias de test del TCK si existen
     testImplementation fileTree(dir: 'lib', include: '*.jar')
 

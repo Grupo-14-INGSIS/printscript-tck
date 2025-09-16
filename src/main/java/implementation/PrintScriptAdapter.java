@@ -11,299 +11,447 @@ import java.io.*;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
 
 public class PrintScriptAdapter implements PrintScriptFactory {
 
-  @Override
-  public PrintScriptInterpreter interpreter() {
-    return new PrintScriptInterpreterAdapter();
-  }
-
-  @Override
-  public PrintScriptFormatter formatter() {
-    return new PrintScriptFormatterAdapter();
-  }
-
-  @Override
-  public PrintScriptLinter linter() {
-    return new PrintScriptLinterAdapter();
-  }
-
-  // ==================== INTERPRETER ADAPTER ====================
-  private static class PrintScriptInterpreterAdapter implements PrintScriptInterpreter {
     @Override
-    public void execute(InputStream src, String version, PrintEmitter emitter,
-                        ErrorHandler handler, InputProvider provider) {
-      try {
-        // 1. Leer el código fuente
-        String sourceCode = readInputStream(src);
-
-        // 2. Crear el lexer
-        Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
-        Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
-            .newInstance(sourceCode);
-
-        Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
-            .newInstance(charSource);
-
-        // 3. Hacer split para obtener tokens
-        Method splitMethod = lexerClass.getMethod("split", int.class);
-        splitMethod.invoke(lexer, 8192);
-
-        // 4. Obtener la lista de strings
-        Method getListMethod = lexerClass.getMethod("getList");
-        Object listField = getListMethod.invoke(lexer);
-
-        // 5. Crear tokens
-        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
-        Object container = createTokenMethod.invoke(lexer, listField);
-
-        // 6. Crear parser
-        Class<?> parserClass = Class.forName("parser.src.main.kotlin.Parser");
-        Object parser = parserClass.getDeclaredConstructor(
-                Class.forName("container.src.main.kotlin.Container"), String.class)
-            .newInstance(container, version);
-
-        // 7. Parsear para obtener AST
-        Method parseMethod = parserClass.getMethod("parse");
-        Object ast = parseMethod.invoke(parser);
-
-        // 8. Crear interpreter con InputProvider adaptado
-        Class<?> interpreterClass = Class.forName("interpreter.src.main.kotlin.Interpreter");
-        Object inputProviderAdapter = createInputProviderAdapter(provider);
-        Object interpreter = interpreterClass.getDeclaredConstructor(String.class,
-                Class.forName("inputprovider.src.main.kotlin.InputProvider"))
-            .newInstance(version, inputProviderAdapter);
-
-        // 9. Configurar PrintEmitter (esto requiere modificar el interpreter)
-        configurePrintEmitter(interpreter, emitter);
-
-        // 10. Ejecutar AST
-        Method executeASTMethod = interpreterClass.getMethod("executeAST",
-            Class.forName("ast.src.main.kotlin.ASTNode"));
-        executeASTMethod.invoke(interpreter, ast);
-
-      } catch (Exception e) {
-        handler.reportError("Error durante la interpretación: " + e.getMessage());
-        e.printStackTrace();
-      }
+    public PrintScriptInterpreter interpreter() {
+        return new PrintScriptInterpreterAdapter();
     }
 
-    private Object createInputProviderAdapter(InputProvider tckProvider) throws Exception {
-      if (tckProvider == null) return null;
-
-      // Crear un proxy que adapte el InputProvider del TCK al de tu sistema
-      Class<?> inputProviderClass = Class.forName("inputprovider.src.main.kotlin.InputProvider");
-      return java.lang.reflect.Proxy.newProxyInstance(
-          inputProviderClass.getClassLoader(),
-          new Class[]{inputProviderClass},
-          (proxy, method, args) -> {
-            if ("input".equals(method.getName()) && args.length == 1) {
-              return tckProvider.input((String) args[0]);
-            }
-            return null;
-          }
-      );
+    @Override
+    public PrintScriptFormatter formatter() {
+        return new PrintScriptFormatterAdapter();
     }
 
-    private void configurePrintEmitter(Object interpreter, PrintEmitter emitter) {
-      // Aquí necesitarías modificar tu interpreter para aceptar un PrintEmitter
-      // Por ahora, redirigimos System.out temporalmente
-      PrintStream originalOut = System.out;
-      System.setOut(new PrintStream(new OutputStream() {
-        private StringBuilder buffer = new StringBuilder();
+    @Override
+    public PrintScriptLinter linter() {
+        return new PrintScriptLinterAdapter();
+    }
 
+    // ==================== INTERPRETER ADAPTER ====================
+    private static class PrintScriptInterpreterAdapter implements PrintScriptInterpreter {
         @Override
-        public void write(int b) throws IOException {
-          if (b == '\n') {
-            emitter.print(buffer.toString());
-            buffer.setLength(0);
-          } else {
-            buffer.append((char) b);
-          }
-        }
-      }));
-    }
-  }
+        public void execute(InputStream src, String version, PrintEmitter emitter,
+                            ErrorHandler handler, InputProvider provider) {
+            try {
+                // 1. Leer el código fuente
+                String sourceCode = readInputStream(src);
 
-  // ==================== FORMATTER ADAPTER ====================
-  private static class PrintScriptFormatterAdapter implements PrintScriptFormatter {
-    @Override
-    public void format(InputStream src, String version, InputStream config, Writer writer) {
-      try {
-        // 1. Leer el código fuente
-        String sourceCode = readInputStream(src);
+                // 2. Crear el lexer
+                Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
+                Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
+                        .newInstance(sourceCode);
 
-        // 2. Crear el lexer
-        Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
-        Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
-            .newInstance(sourceCode);
+                Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
+                Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
+                        .newInstance(charSource);
 
-        Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
-            .newInstance(charSource);
+                // 3. Hacer split para obtener tokens
+                Method splitMethod = lexerClass.getMethod("split", int.class);
+                splitMethod.invoke(lexer, 8192);
 
-        // 3. Hacer split para obtener tokens
-        Method splitMethod = lexerClass.getMethod("split", int.class);
-        splitMethod.invoke(lexer, 8192);
+                // 4. Obtener la lista de strings
+                Method getListMethod = lexerClass.getMethod("getList");
+                Object listField = getListMethod.invoke(lexer);
 
-        // 4. Obtener la lista y crear tokens
-        Method getListMethod = lexerClass.getMethod("getList");
-        Object listField = getListMethod.invoke(lexer);
-        //Object listField = lexerClass.getField("list").get(lexer);
-        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
-        Object container = createTokenMethod.invoke(lexer, listField);
+                // 5. Crear tokens
+                Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+                Object container = createTokenMethod.invoke(lexer, listField);
 
-        // 5. Crear archivo de configuración temporal
-        File configFile = createTempConfigFile(config);
+                // 6. Crear parser
+                Class<?> parserClass = Class.forName("parser.src.main.kotlin.Parser");
+                Object parser = parserClass.getDeclaredConstructor(
+                                Class.forName("container.src.main.kotlin.Container"), String.class)
+                        .newInstance(container, version);
 
-        // 6. Crear formatter y ejecutar
-        Class<?> formatterClass = Class.forName("formatter.src.main.kotlin.Formatter");
-        Object formatter = formatterClass.getDeclaredConstructor().newInstance();
+                // 7. Parsear para obtener AST
+                Method parseMethod = parserClass.getMethod("parse");
+                Object ast = parseMethod.invoke(parser);
 
-        Method executeMethod = formatterClass.getMethod("execute",
-            Class.forName("container.src.main.kotlin.Container"), URL.class);
-        Object formattedContainer = executeMethod.invoke(formatter, container, configFile.toURI().toURL());
+                // 8. Crear interpreter con InputProvider adaptado
+                Class<?> interpreterClass = Class.forName("interpreter.src.main.kotlin.Interpreter");
+                Object inputProviderAdapter = createInputProviderAdapter(provider);
+                Object interpreter = interpreterClass.getDeclaredConstructor(String.class,
+                                Class.forName("inputprovider.src.main.kotlin.InputProvider"))
+                        .newInstance(version, inputProviderAdapter);
 
-        // 7. Convertir el container formateado de vuelta a string
-        String formattedCode = containerToString(formattedContainer);
-        writer.write(formattedCode);
-        writer.flush();
+                // 9. Configurar PrintEmitter (esto requiere modificar el interpreter)
+                configurePrintEmitter(interpreter, emitter);
 
-        // Limpiar archivo temporal
-        configFile.delete();
+                // 10. Ejecutar AST
+                Method executeASTMethod = interpreterClass.getMethod("executeAST",
+                        Class.forName("ast.src.main.kotlin.ASTNode"));
+                executeASTMethod.invoke(interpreter, ast);
 
-      } catch (Exception e) {
-        throw new RuntimeException("Error durante el formateo: " + e.getMessage(), e);
-      }
-    }
-
-    private File createTempConfigFile(InputStream config) throws IOException {
-      File tempFile = File.createTempFile("format_config", ".json");
-      if (config != null) {
-        Files.copy(config, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-      } else {
-        // Configuración por defecto
-        Files.write(tempFile.toPath(), getDefaultFormatConfig().getBytes());
-      }
-      return tempFile;
-    }
-
-    private String getDefaultFormatConfig() {
-      return "{\n" +
-          "  \"spaceBeforeColon\": false,\n" +
-          "  \"spaceAfterColon\": true,\n" +
-          "  \"spaceAroundEquals\": true,\n" +
-          "  \"lineBreakAfterSemicolon\": true\n" +
-          "}";
-    }
-  }
-
-  // ==================== LINTER ADAPTER ====================
-  private static class PrintScriptLinterAdapter implements PrintScriptLinter {
-    @Override
-    public void lint(InputStream src, String version, InputStream config, ErrorHandler handler) {
-      try {
-        // 1. Leer el código fuente
-        String sourceCode = readInputStream(src);
-
-        // 2. Crear el lexer
-        Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
-        Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
-            .newInstance(sourceCode);
-
-        Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-        System.out.println(lexerClass);
-        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
-            .newInstance(charSource);
-
-        // 3. Hacer split para obtener tokens
-        Method splitMethod = lexerClass.getMethod("split", int.class);
-        splitMethod.invoke(lexer, 8192);
-
-        // 4. Obtener la lista y crear tokens
-        Object listField = lexerClass.getField("list").get(lexer);
-        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
-        Object container = createTokenMethod.invoke(lexer, listField);
-
-        // 5. Crear parser
-        Class<?> parserClass = Class.forName("parser.src.main.kotlin.Parser");
-        Object parser = parserClass.getDeclaredConstructor(
-                Class.forName("container.src.main.kotlin.Container"), String.class)
-            .newInstance(container, version);
-
-        // 6. Parsear para obtener AST
-        Method parseMethod = parserClass.getMethod("parse");
-        Object ast = parseMethod.invoke(parser);
-
-        // 7. Crear reglas de linting (necesitarías implementar esto basado en config)
-        java.util.List<Object> rules = createLintRules(config);
-
-        // 8. Crear linter y ejecutar
-        Class<?> linterClass = Class.forName("linter.src.main.kotlin.Linter");
-        Object linter = linterClass.getDeclaredConstructor(java.util.List.class)
-            .newInstance(rules);
-
-        Method allMethod = linterClass.getMethod("all", Class.forName("ast.src.main.kotlin.ASTNode"));
-        @SuppressWarnings("unchecked")
-        java.util.List<Object> errors = (java.util.List<Object>) allMethod.invoke(linter, ast);
-
-        // 9. Reportar errores
-        for (Object error : errors) {
-          String errorMessage = error.toString(); // Necesitarías formatear mejor esto
-          handler.reportError(errorMessage);
+            } catch (Exception e) {
+                handler.reportError("Error durante la interpretación: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
 
-      } catch (Exception e) {
-        handler.reportError("Error durante el linting: " + e.getMessage());
-      }
-    }
+        private Object createInputProviderAdapter(InputProvider tckProvider) throws Exception {
+            if (tckProvider == null) return null;
 
-    private java.util.List<Object> createLintRules(InputStream config) {
-      // Aquí necesitarías crear las reglas basadas en la configuración
-      // Por ahora, retornamos una lista vacía
-      return new java.util.ArrayList<>();
-    }
-  }
-
-  // ==================== UTILIDADES ====================
-  private static String readInputStream(InputStream inputStream) throws IOException {
-    StringBuilder textBuilder = new StringBuilder();
-    try (Reader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-      int c;
-      while ((c = reader.read()) != -1) {
-        textBuilder.append((char) c);
-      }
-    }
-    return textBuilder.toString();
-  }
-
-  private static String containerToString(Object container) throws Exception {
-    // Necesitarías implementar esto basado en tu clase Container
-    // Por ahora, una implementación básica
-    Class<?> containerClass = container.getClass();
-    Method sizeMethod = containerClass.getMethod("size");
-    Method getMethod = containerClass.getMethod("get", int.class);
-
-    int size = (Integer) sizeMethod.invoke(container);
-    StringBuilder result = new StringBuilder();
-
-    for (int i = 0; i < size; i++) {
-      Object token = getMethod.invoke(container, i);
-      if (token != null) {
-        // Obtener el contenido del token
-        Method getContentMethod = token.getClass().getMethod("getContent");
-        Object content = getContentMethod.invoke(token);
-        //Object content = token.getClass().getField("content").get(token);
-        result.append(content.toString());
-        if (i < size - 1) {
-          result.append(" ");
+            // Crear un proxy que adapte el InputProvider del TCK al de tu sistema
+            Class<?> inputProviderClass = Class.forName("inputprovider.src.main.kotlin.InputProvider");
+            return java.lang.reflect.Proxy.newProxyInstance(
+                    inputProviderClass.getClassLoader(),
+                    new Class[]{inputProviderClass},
+                    (proxy, method, args) -> {
+                        if ("input".equals(method.getName()) && args.length == 1) {
+                            return tckProvider.input((String) args[0]);
+                        }
+                        return null;
+                    }
+            );
         }
-      }
+
+        private void configurePrintEmitter(Object interpreter, PrintEmitter emitter) {
+            // Aquí necesitarías modificar tu interpreter para aceptar un PrintEmitter
+            // Por ahora, redirigimos System.out temporalmente
+            PrintStream originalOut = System.out;
+            System.setOut(new PrintStream(new OutputStream() {
+                private StringBuilder buffer = new StringBuilder();
+
+                @Override
+                public void write(int b) throws IOException {
+                    if (b == '\n') {
+                        emitter.print(buffer.toString());
+                        buffer.setLength(0);
+                    } else {
+                        buffer.append((char) b);
+                    }
+                }
+            }));
+        }
     }
 
-    return result.toString();
-  }
+    // ==================== FORMATTER ADAPTER ====================
+    private static class PrintScriptFormatterAdapter implements PrintScriptFormatter {
+        @Override
+        public void format(InputStream src, String version, InputStream config, Writer writer) {
+            try {
+                /*
+                // Initialize formatter
+                Class<?> formatterClass = Class.forName("formatteraction.src.main.kotlin.FormatterAction");
+                Object formatter = formatterClass.getDeclaredConstructor().newInstance();
+                Method execute = formatterClass.getDeclaredMethod("execute", List.class);
+
+                // Initialize arguments
+                ArrayList<String> exeArgs = new ArrayList<>();
+                byte[] source = src.readAllBytes();
+                String texto = new String(source);
+                System.out.println(texto);
+                exeArgs.add(src.toString());
+                exeArgs.add(config.toString());
+                exeArgs.add(version);
+
+                // Execute command
+                Object output = execute.invoke(formatter, exeArgs);
+
+                // get formatted output
+                System.out.println("output: " + output);
+                writer.write(String.valueOf(output));
+                 */
+
+                print(1);
+                // 1. Leer el código fuente
+                String sourceCode = readInputStream(src);
+                print(sourceCode);
+                print(config.toString());
+
+                print(2);
+                // 2. Crear el lexer
+                Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
+                Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class).newInstance(sourceCode);
+
+                Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
+                Object lexer = lexerClass.getDeclaredConstructor
+                        (Class.forName("lexer.src.main.kotlin.CharSource")).newInstance(charSource);
+
+                print(3);
+                // 3. Hacer split para obtener tokens
+                Method splitMethod = lexerClass.getMethod("split", int.class);
+                splitMethod.invoke(lexer, 8192);
+
+                print(4);
+                // 4. Obtener la lista y crear tokens
+                Method getListMethod = lexerClass.getMethod("getList");
+                Object listField = getListMethod.invoke(lexer);
+                //Object listField = lexerClass.getField("list").get(lexer);
+                Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+                Object container = createTokenMethod.invoke(lexer, listField);
+
+                print(5);
+                // 5. Crear archivo de configuración temporal
+                File configFile = createTempConfigFile(config);
+
+                print(6);
+                // 6. Crear formatter y ejecutar
+                Class<?> formatterClass = Class.forName("formatter.src.main.kotlin.Formatter");
+                Object formatter = formatterClass.getDeclaredConstructor().newInstance();
+
+                Method executeMethod = formatterClass.getMethod("execute",
+                        Class.forName("container.src.main.kotlin.Container"), URL.class);
+                Object formattedContainer = executeMethod.invoke(formatter, container, configFile.toURI().toURL());
+
+                print(7);
+                // 7. Convertir el container formateado de vuelta a string
+                String formattedCode = containerToString(formattedContainer);
+                writer.write(formattedCode);
+                writer.flush();
+
+                print("fin");
+                // Limpiar archivo temporal
+                configFile.delete();
+            } catch (Exception e) {
+                throw new RuntimeException("Error durante el formateo: " + e.getMessage(), e);
+            }
+        }
+
+        private File createTempConfigFile(InputStream config) throws IOException {
+            File tempFile = File.createTempFile("format_config", ".json");
+            String configuration = readInputStream(config);
+            print(configuration);
+            Map<String, Object> configFile = JSONToMap(configuration);
+            if (configFile.isEmpty()) {
+                // Configuración por defecto
+                Files.write(tempFile.toPath(), getDefaultFormatConfig().getBytes());
+            } else {
+                String configYAML = translateRule(configFile, tempFile);
+                Files.write(tempFile.toPath(), configYAML.getBytes());
+            }
+            return tempFile;
+        }
+
+        public static Map<String, Object> JSONToMap(String json) throws IOException {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(json, new TypeReference<>() {
+            });
+        }
+
+        /** Takes a list of configuration from configFile and writes it to tempFile as a translated version of the rules. */
+        private String translateRule(Map<String, Object> configFile,  File tempFile) throws IOException {
+            // Sort in groups:
+            List<String> switchRuleList = List.of(new String[]{
+                    "enforce-spacing-around-equals",
+                    "enforce-no-spacing-around-equals",
+                    "enforce-spacing-before-colon-in-declaration",
+                    "enforce-spacing-after-colon-in-declaration",
+                    "mandatory-single-space-separation",
+                    "mandatory-space-surrounding-operations",
+                    "mandatory-line-break-after-statement",
+                    "if-brace-below-line",
+                    "if-brace-same-line"
+            });
+            List<String> valueRuleList = List.of(new String[]{
+                    "line-breaks-after-println",
+                    "indent-inside-if"});
+            Map<String, Boolean> switchRules = new HashMap<>();
+            Map<String, Object> valueRules = new HashMap<>();
+            for (String rule : configFile.keySet()) {
+                if (switchRuleList.contains(rule)) {
+                    switchRules.put(rule, (Boolean) configFile.get(rule));
+                } else if (valueRuleList.contains(rule)) {
+                    valueRules.put(rule, configFile.get(rule));
+                }
+            }
+
+            // Translation
+            Map<String, Boolean> translatedSwitchRules = new HashMap<>();
+            Map<String, Object> translatedValueRules = new HashMap<>();
+
+            /*
+            +
+            +
+            +
+            +
+            "CharLimitPerLine" -> CharLimitPerLineRule()
+            "ClassNameCamel" -> ClassNameCamelCaseRule()
+            +
+            +
+             */
+
+            for (String rule : switchRules.keySet()) {
+                switch  (rule) {
+                    case "enforce-spacing-around-equals":
+                        translatedSwitchRules.put("NoSpaceBeforeEquals", (Boolean) configFile.get(rule));
+                        translatedSwitchRules.put("NoSpaceAfterEquals", (Boolean) configFile.get(rule));
+                        break;
+                    case "enforce-no-spacing-around-equals":
+                        translatedSwitchRules.put("NoSpaceBeforeEquals", !(boolean) configFile.get(rule));
+                        translatedSwitchRules.put("NoSpaceAfterEquals", !(Boolean) configFile.get(rule));
+                        break;
+                    case "enforce-spacing-before-colon-in-declaration":
+                        translatedSwitchRules.put("NoSpaceBeforeColon", (Boolean) configFile.get(rule));
+                        break;
+                    case "enforce-spacing-after-colon-in-declaration":
+                        translatedSwitchRules.put("NoSpaceAfterColon", (Boolean) configFile.get(rule));
+                        break;
+                    // Mandatory rules, they are always applied
+                    case "mandatory-single-space-separation", "if-brace-same-line",
+                         "mandatory-space-surrounding-operations", "mandatory-line-break-after-statement":
+                        break;
+                    case "if-brace-below-line":
+                        // This rule was not asked
+                        break;
+                }
+            }
+
+            for (String rule : valueRules.keySet()) {
+                switch (rule) {
+                    case "line-breaks-after-println":
+                        translatedValueRules.put("lineBreakBeforePrint", valueRules.get(rule));
+                        break;
+                    case "indent-inside-if":
+                        translatedValueRules.put("indentSize", valueRules.get(rule));
+                        break;
+                }
+            }
+
+            // Generate YAML structure
+            Map<String, Map<String, Object>> configuration = new HashMap<>();
+            Map<String, Object> rules = new HashMap<>();
+
+            rules.put("switch", translatedSwitchRules);
+            rules.put("setValue", translatedValueRules);
+
+            configuration.put("rules", rules);
+
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            return mapper.writeValueAsString(configuration);
+        }
+
+        private String getDefaultFormatConfig() {
+            return "{\n" +
+                    "  \"spaceBeforeColon\": false,\n" +
+                    "  \"spaceAfterColon\": true,\n" +
+                    "  \"spaceAroundEquals\": true,\n" +
+                    "  \"lineBreakAfterSemicolon\": true\n" +
+                    "}";
+        }
+    }
+
+    // ==================== LINTER ADAPTER ====================
+    private static class PrintScriptLinterAdapter implements PrintScriptLinter {
+        @Override
+        public void lint(InputStream src, String version, InputStream config, ErrorHandler handler) {
+            try {
+                // 1. Leer el código fuente
+                String sourceCode = readInputStream(src);
+
+                // 2. Crear el lexer
+                Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
+                Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
+                        .newInstance(sourceCode);
+
+                Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
+                //System.out.println(lexerClass);
+                Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
+                        .newInstance(charSource);
+
+                // 3. Hacer split para obtener tokens
+                Method splitMethod = lexerClass.getMethod("split", int.class);
+                splitMethod.invoke(lexer, 8192);
+
+                // 4. Obtener la lista y crear tokens
+                Object listField = lexerClass.getField("list").get(lexer);
+                Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+                Object container = createTokenMethod.invoke(lexer, listField);
+
+                // 5. Crear parser
+                Class<?> parserClass = Class.forName("parser.src.main.kotlin.Parser");
+                Object parser = parserClass.getDeclaredConstructor(
+                                Class.forName("container.src.main.kotlin.Container"), String.class)
+                        .newInstance(container, version);
+
+                // 6. Parsear para obtener AST
+                Method parseMethod = parserClass.getMethod("parse");
+                Object ast = parseMethod.invoke(parser);
+
+                // 7. Crear reglas de linting (necesitarías implementar esto basado en config)
+                java.util.List<Object> rules = createLintRules(config);
+
+                // 8. Crear linter y ejecutar
+                Class<?> linterClass = Class.forName("linter.src.main.kotlin.Linter");
+                Object linter = linterClass.getDeclaredConstructor(java.util.List.class)
+                        .newInstance(rules);
+
+                Method allMethod = linterClass.getMethod("all", Class.forName("ast.src.main.kotlin.ASTNode"));
+                @SuppressWarnings("unchecked")
+                java.util.List<Object> errors = (java.util.List<Object>) allMethod.invoke(linter, ast);
+
+                // 9. Reportar errores
+                for (Object error : errors) {
+                    String errorMessage = error.toString(); // Necesitarías formatear mejor esto
+                    handler.reportError(errorMessage);
+                }
+
+            } catch (Exception e) {
+                handler.reportError("Error durante el linting: " + e.getMessage());
+            }
+        }
+
+        private java.util.List<Object> createLintRules(InputStream config) {
+            // Aquí necesitarías crear las reglas basadas en la configuración
+            // Por ahora, retornamos una lista vacía
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    // ==================== UTILIDADES ====================
+    private static String readInputStream(InputStream inputStream) throws IOException {
+        StringBuilder textBuilder = new StringBuilder();
+        try (Reader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            int c;
+            while ((c = reader.read()) != -1) {
+                textBuilder.append((char) c);
+            }
+        }
+        return textBuilder.toString();
+    }
+
+    private static String containerToString(Object container) throws Exception {
+        // Necesitarías implementar esto basado en tu clase Container
+        // Por ahora, una implementación básica
+        Class<?> containerClass = container.getClass();
+        Method sizeMethod = containerClass.getMethod("size");
+        Method getMethod = containerClass.getMethod("get", int.class);
+
+        int size = (Integer) sizeMethod.invoke(container);
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < size; i++) {
+            Object token = getMethod.invoke(container, i);
+            if (token != null) {
+                // Obtener el contenido del token
+                Method getContentMethod = token.getClass().getMethod("getContent");
+                Object content = getContentMethod.invoke(token);
+                //Object content = token.getClass().getField("content").get(token);
+                result.append(content.toString());
+                if (i < size - 1) {
+                    result.append(" ");
+                }
+            }
+        }
+
+        return result.toString();
+    }
+
+    private static void print(Object obj) {
+        System.out.println(obj.toString());
+    }
 }
