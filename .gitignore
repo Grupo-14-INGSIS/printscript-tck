@@ -136,3 +136,4 @@ gradle-app.setting
 .DS_Store
 .AppleDouble
 .LSOverride
+.env
