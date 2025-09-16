@@ -167,13 +167,9 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 writer.write(String.valueOf(output));
                  */
 
-                print(1);
                 // 1. Leer el código fuente
                 String sourceCode = readInputStream(src);
-                print(sourceCode);
-                print(config.toString());
 
-                print(2);
                 // 2. Crear el lexer
                 Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
                 Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class).newInstance(sourceCode);
@@ -182,12 +178,10 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 Object lexer = lexerClass.getDeclaredConstructor
                         (Class.forName("lexer.src.main.kotlin.CharSource")).newInstance(charSource);
 
-                print(3);
                 // 3. Hacer split para obtener tokens
                 Method splitMethod = lexerClass.getMethod("split", int.class);
                 splitMethod.invoke(lexer, 8192);
 
-                print(4);
                 // 4. Obtener la lista y crear tokens
                 Method getListMethod = lexerClass.getMethod("getList");
                 Object listField = getListMethod.invoke(lexer);
@@ -195,11 +189,9 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
                 Object container = createTokenMethod.invoke(lexer, listField);
 
-                print(5);
                 // 5. Crear archivo de configuración temporal
                 File configFile = createTempConfigFile(config);
 
-                print(6);
                 // 6. Crear formatter y ejecutar
                 Class<?> formatterClass = Class.forName("formatter.src.main.kotlin.Formatter");
                 Object formatter = formatterClass.getDeclaredConstructor().newInstance();
@@ -208,13 +200,12 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                         Class.forName("container.src.main.kotlin.Container"), URL.class);
                 Object formattedContainer = executeMethod.invoke(formatter, container, configFile.toURI().toURL());
 
-                print(7);
                 // 7. Convertir el container formateado de vuelta a string
                 String formattedCode = containerToString(formattedContainer);
+                print(formattedCode);
                 writer.write(formattedCode);
                 writer.flush();
 
-                print("fin");
                 // Limpiar archivo temporal
                 configFile.delete();
             } catch (Exception e) {
@@ -274,26 +265,20 @@ public class PrintScriptAdapter implements PrintScriptFactory {
             Map<String, Boolean> translatedSwitchRules = new HashMap<>();
             Map<String, Object> translatedValueRules = new HashMap<>();
 
-            /*
-            +
-            +
-            +
-            +
+            /* unused
             "CharLimitPerLine" -> CharLimitPerLineRule()
             "ClassNameCamel" -> ClassNameCamelCaseRule()
-            +
-            +
              */
 
             for (String rule : switchRules.keySet()) {
                 switch  (rule) {
                     case "enforce-spacing-around-equals":
-                        translatedSwitchRules.put("NoSpaceBeforeEquals", (Boolean) configFile.get(rule));
-                        translatedSwitchRules.put("NoSpaceAfterEquals", (Boolean) configFile.get(rule));
+                        translatedSwitchRules.put("NoSpaceBeforeEquals", !(Boolean) configFile.get(rule));
+                        translatedSwitchRules.put("NoSpaceAfterEquals", !(Boolean) configFile.get(rule));
                         break;
                     case "enforce-no-spacing-around-equals":
-                        translatedSwitchRules.put("NoSpaceBeforeEquals", !(boolean) configFile.get(rule));
-                        translatedSwitchRules.put("NoSpaceAfterEquals", !(Boolean) configFile.get(rule));
+                        translatedSwitchRules.put("NoSpaceBeforeEquals", (boolean) configFile.get(rule));
+                        translatedSwitchRules.put("NoSpaceAfterEquals", (Boolean) configFile.get(rule));
                         break;
                     case "enforce-spacing-before-colon-in-declaration":
                         translatedSwitchRules.put("NoSpaceBeforeColon", (Boolean) configFile.get(rule));
@@ -332,6 +317,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
             configuration.put("rules", rules);
 
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            //print(mapper.writeValueAsString(configuration));
             return mapper.writeValueAsString(configuration);
         }
 
@@ -425,11 +411,12 @@ public class PrintScriptAdapter implements PrintScriptFactory {
     }
 
     private static String containerToString(Object container) throws Exception {
-        // Necesitarías implementar esto basado en tu clase Container
-        // Por ahora, una implementación básica
+        // Initialize classes and methods
         Class<?> containerClass = container.getClass();
         Method sizeMethod = containerClass.getMethod("size");
         Method getMethod = containerClass.getMethod("get", int.class);
+        Class<?> tokenClass = Class.forName("token.src.main.kotlin.Token");
+        Method getContentMethod = tokenClass.getMethod("getContent");
 
         int size = (Integer) sizeMethod.invoke(container);
         StringBuilder result = new StringBuilder();
@@ -437,17 +424,10 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         for (int i = 0; i < size; i++) {
             Object token = getMethod.invoke(container, i);
             if (token != null) {
-                // Obtener el contenido del token
-                Method getContentMethod = token.getClass().getMethod("getContent");
                 Object content = getContentMethod.invoke(token);
-                //Object content = token.getClass().getField("content").get(token);
                 result.append(content.toString());
-                if (i < size - 1) {
-                    result.append(" ");
-                }
             }
         }
-
         return result.toString();
     }
 
