@@ -9,9 +9,12 @@ import interpreter.PrintEmitter;
 
 import java.io.*;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PrintScriptAdapter implements PrintScriptFactory {
 
@@ -57,7 +60,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         Object listField = getListMethod.invoke(lexer);
 
         // 5. Crear tokens
-        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+        Method createTokenMethod = lexerClass.getMethod("createToken", List.class);
         Object container = createTokenMethod.invoke(lexer, listField);
 
         // 6. Crear parser
@@ -83,6 +86,11 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         // 10. Ejecutar AST
         Method executeASTMethod = interpreterClass.getMethod("executeAST",
             Class.forName("ast.src.main.kotlin.ASTNode"));
+
+        System.out.println("AST real type: " + ast.getClass());
+        System.out.println("Expected type: " + Class.forName("ast.src.main.kotlin.ASTNode"));
+        System.out.println("Instanceof? " + Class.forName("ast.src.main.kotlin.ASTNode").isInstance(ast));
+
         executeASTMethod.invoke(interpreter, ast);
 
       } catch (Exception e) {
@@ -96,7 +104,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
       // Crear un proxy que adapte el InputProvider del TCK al de tu sistema
       Class<?> inputProviderClass = Class.forName("inputprovider.src.main.kotlin.InputProvider");
-      return java.lang.reflect.Proxy.newProxyInstance(
+      return Proxy.newProxyInstance(
           inputProviderClass.getClassLoader(),
           new Class[]{inputProviderClass},
           (proxy, method, args) -> {
@@ -153,7 +161,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         Method getListMethod = lexerClass.getMethod("getList");
         Object listField = getListMethod.invoke(lexer);
         //Object listField = lexerClass.getField("list").get(lexer);
-        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+        Method createTokenMethod = lexerClass.getMethod("createToken", List.class);
         Object container = createTokenMethod.invoke(lexer, listField);
 
         // 5. Crear archivo de configuración temporal
@@ -215,7 +223,6 @@ public class PrintScriptAdapter implements PrintScriptFactory {
             .newInstance(sourceCode);
 
         Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-        System.out.println(lexerClass);
         Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
             .newInstance(charSource);
 
@@ -224,8 +231,10 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         splitMethod.invoke(lexer, 8192);
 
         // 4. Obtener la lista y crear tokens
-        Object listField = lexerClass.getField("list").get(lexer);
-        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+        Method getListMethod = lexerClass.getMethod("getList");
+        Object listField = getListMethod.invoke(lexer);
+        //Object listField = lexerClass.getDeclaredField("list").get(lexer);
+        Method createTokenMethod = lexerClass.getMethod("createToken", List.class);
         Object container = createTokenMethod.invoke(lexer, listField);
 
         // 5. Crear parser
@@ -236,19 +245,20 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
         // 6. Parsear para obtener AST
         Method parseMethod = parserClass.getMethod("parse");
+        //Error null si config está vacío, PORQUE?
         Object ast = parseMethod.invoke(parser);
 
         // 7. Crear reglas de linting (necesitarías implementar esto basado en config)
-        java.util.List<Object> rules = createLintRules(config);
+        List<Object> rules = createLintRules(config);
 
         // 8. Crear linter y ejecutar
         Class<?> linterClass = Class.forName("linter.src.main.kotlin.Linter");
-        Object linter = linterClass.getDeclaredConstructor(java.util.List.class)
+        Object linter = linterClass.getDeclaredConstructor(List.class)
             .newInstance(rules);
 
         Method allMethod = linterClass.getMethod("all", Class.forName("ast.src.main.kotlin.ASTNode"));
         @SuppressWarnings("unchecked")
-        java.util.List<Object> errors = (java.util.List<Object>) allMethod.invoke(linter, ast);
+        List<Object> errors = (List<Object>) allMethod.invoke(linter, ast);
 
         // 9. Reportar errores
         for (Object error : errors) {
@@ -261,10 +271,40 @@ public class PrintScriptAdapter implements PrintScriptFactory {
       }
     }
 
-    private java.util.List<Object> createLintRules(InputStream config) {
+    private List<Object> createLintRules(InputStream config) {
       // Aquí necesitarías crear las reglas basadas en la configuración
-      // Por ahora, retornamos una lista vacía
-      return new java.util.ArrayList<>();
+
+      try {
+        String result = readInputStream(config);
+        int index = result.indexOf("identifier_format");
+        if (index == -1){
+          return new ArrayList<>();
+        }
+        int searchingIndex = index + 21;
+
+        StringBuilder option = new StringBuilder();
+        for (int i = searchingIndex; result.charAt(i) != '"'; i++){
+          option.append(result.charAt(i));
+        }
+
+        switch (option.toString()){
+          case "camel case":
+            option = new StringBuilder("camelCase");
+            break;
+          case "snake case":
+            option = new StringBuilder("snake_case");
+            break;
+          default:
+        }
+
+        System.out.println(option);
+
+
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+      return new ArrayList<>();
     }
   }
 
@@ -306,4 +346,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
     return result.toString();
   }
+
+
+
 }
