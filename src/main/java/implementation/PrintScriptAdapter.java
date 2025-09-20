@@ -6,6 +6,8 @@ import interpreter.PrintScriptLinter;
 import interpreter.ErrorHandler;
 import interpreter.InputProvider;
 import interpreter.PrintEmitter;
+import linter.src.main.kotlin.LintRule;
+import linter.src.main.kotlin.rules.IdentifierNamingRule;
 
 import java.io.*;
 import java.lang.reflect.Method;
@@ -245,11 +247,11 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
         // 6. Parsear para obtener AST
         Method parseMethod = parserClass.getMethod("parse");
-        //Error null si config está vacío, PORQUE?
+        //Error null si config está vacío, ¿PORQUE?
         Object ast = parseMethod.invoke(parser);
 
         // 7. Crear reglas de linting (necesitarías implementar esto basado en config)
-        List<Object> rules = createLintRules(config);
+        List<LintRule> rules = createLintRules(config);
 
         // 8. Crear linter y ejecutar
         Class<?> linterClass = Class.forName("linter.src.main.kotlin.Linter");
@@ -271,20 +273,22 @@ public class PrintScriptAdapter implements PrintScriptFactory {
       }
     }
 
-    private List<Object> createLintRules(InputStream config) {
+    private List<LintRule> createLintRules(InputStream config) {
       // Aquí necesitarías crear las reglas basadas en la configuración
+      List<LintRule> result = new ArrayList<>();
 
       try {
-        String result = readInputStream(config);
-        int index = result.indexOf("identifier_format");
+        String streamString = readInputStream(config);
+        System.out.println(streamString);
+        int index = streamString.indexOf("identifier_format");
         if (index == -1){
           return new ArrayList<>();
         }
         int searchingIndex = index + 21;
 
         StringBuilder option = new StringBuilder();
-        for (int i = searchingIndex; result.charAt(i) != '"'; i++){
-          option.append(result.charAt(i));
+        for (int i = searchingIndex; streamString.charAt(i) != '"'; i++){
+          option.append(streamString.charAt(i));
         }
 
         switch (option.toString()){
@@ -299,12 +303,13 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
         System.out.println(option);
 
+        result.add(new IdentifierNamingRule(option.toString()));
 
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
 
-      return new ArrayList<>();
+      return result;
     }
   }
 
@@ -346,7 +351,5 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
     return result.toString();
   }
-
-
 
 }
