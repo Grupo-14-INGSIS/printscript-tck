@@ -342,63 +342,73 @@ public class PrintScriptAdapter implements PrintScriptFactory {
     // ==================== LINTER ADAPTER ====================
     private static class PrintScriptLinterAdapter implements PrintScriptLinter {
         @Override
-        public void lint(InputStream src, String version, InputStream config, ErrorHandler handler) {
-            try {
-                // 1. Leer el código fuente
-                String sourceCode = readInputStream(src);
-
-                // 2. Crear el lexer
-                Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
-                Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
-                        .newInstance(sourceCode);
-
-                Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-                //System.out.println(lexerClass);
-                Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
-                        .newInstance(charSource);
-
-                // 3. Hacer split para obtener tokens
-                Method splitMethod = lexerClass.getMethod("split", int.class);
-                splitMethod.invoke(lexer, 8192);
-
-                // 4. Obtener la lista y crear tokens
-                Object listField = lexerClass.getField("list").get(lexer);
-                Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
-                Object container = createTokenMethod.invoke(lexer, listField);
-
-                // 5. Crear parser
-                Class<?> parserClass = Class.forName("parser.src.main.kotlin.Parser");
-                Object parser = parserClass.getDeclaredConstructor(
-                                Class.forName("container.src.main.kotlin.Container"), String.class)
-                        .newInstance(container, version);
-
-                // 6. Parsear para obtener AST
-                Method parseMethod = parserClass.getMethod("parse");
-                Object ast = parseMethod.invoke(parser);
-
-        // 7. Crear reglas de linting (necesitarías implementar esto basado en config)
-        List<LintRule> rules = createLintRules(config);
-
-                // 8. Crear linter y ejecutar
-                Class<?> linterClass = Class.forName("linter.src.main.kotlin.Linter");
-                Object linter = linterClass.getDeclaredConstructor(java.util.List.class)
-                        .newInstance(rules);
-
-                Method allMethod = linterClass.getMethod("all", Class.forName("ast.src.main.kotlin.ASTNode"));
-                @SuppressWarnings("unchecked")
-                java.util.List<Object> errors = (java.util.List<Object>) allMethod.invoke(linter, ast);
-
-                // 9. Reportar errores
-                for (Object error : errors) {
-                    String errorMessage = error.toString(); // Necesitarías formatear mejor esto
-                    handler.reportError(errorMessage);
+                public void lint(InputStream src, String version, InputStream config, ErrorHandler handler) {
+                    try {
+                        System.out.println("Linter starting...");
+                        // 1. Leer el código fuente
+                        String sourceCode = readInputStream(src);
+        
+                        // 2. Crear el lexer
+                        Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
+                        Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class)
+                                .newInstance(sourceCode);
+        
+                        Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
+                        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
+                                .newInstance(charSource);
+        
+                        // 3. Hacer split para obtener tokens
+                        Method splitMethod = lexerClass.getMethod("split", int.class);
+                        splitMethod.invoke(lexer, 8192);
+        
+                        // 4. Obtener la lista y crear tokens
+                        Method getListMethod = lexerClass.getMethod("getList");
+                        Object listField = getListMethod.invoke(lexer);
+                        Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
+                        Object container = createTokenMethod.invoke(lexer, listField);
+        
+                        // 5. Crear parser
+                        Class<?> parserClass = Class.forName("parser.src.main.kotlin.Parser");
+                        Object parser = parserClass.getDeclaredConstructor(
+                                        Class.forName("container.src.main.kotlin.Container"), String.class)
+                                .newInstance(container, version);
+        
+                        // 6. Parsear para obtener AST
+                        Method parseMethod = parserClass.getMethod("parse");
+                        Object ast = parseMethod.invoke(parser);
+                        System.out.println("AST: " + ast);
+        
+                        if (ast == null) {
+                            handler.reportError("Error: Failed to parse the source code.");
+                            return;
+                        }
+        
+                        // 7. Crear reglas de linting (necesitarías implementar esto basado en config)
+                        List<LintRule> rules = createLintRules(config);
+                        System.out.println("Rules: " + rules);
+        
+                        // 8. Crear linter y ejecutar
+                        Class<?> linterClass = Class.forName("linter.src.main.kotlin.Linter");
+                        Object linter = linterClass.getDeclaredConstructor(java.util.List.class)
+                                .newInstance(rules);
+        
+                        Method allMethod = linterClass.getMethod("all", Class.forName("ast.src.main.kotlin.ASTNode"));
+                        @SuppressWarnings("unchecked")
+                        java.util.List<Object> errors = (java.util.List<Object>) allMethod.invoke(linter, ast);
+                        System.out.println("Errors: " + errors);
+        
+                        // 9. Reportar errores
+                        for (Object error : errors) {
+                            String errorMessage = error.toString(); // Necesitarías formatear mejor esto
+                            handler.reportError(errorMessage);
+                        }
+                        System.out.println("Linter finished.");
+        
+                    } catch (Exception e) {
+                        handler.reportError("Error durante el linting: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
-
-            } catch (Exception e) {
-                handler.reportError("Error durante el linting: " + e.getMessage());
-            }
-        }
-
     private List<LintRule> createLintRules(InputStream config) {
       // Aquí necesitarías crear las reglas basadas en la configuración
       List<LintRule> result = new ArrayList<>();
