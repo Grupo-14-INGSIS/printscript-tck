@@ -243,90 +243,9 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         }
 
         /** Takes a list of configuration from configFile and writes it to tempFile as a translated version of the rules. */
-        private String translateRule(Map<String, Object> configFile,  File tempFile) throws IOException {
-            // Sort in groups:
-            List<String> switchRuleList = List.of(new String[]{
-                    "enforce-spacing-around-equals",
-                    "enforce-no-spacing-around-equals",
-                    "enforce-spacing-before-colon-in-declaration",
-                    "enforce-spacing-after-colon-in-declaration",
-                    "mandatory-single-space-separation",
-                    "mandatory-space-surrounding-operations",
-                    "mandatory-line-break-after-statement",
-                    "if-brace-below-line",
-                    "if-brace-same-line"
-            });
-            List<String> valueRuleList = List.of(new String[]{
-                    "line-breaks-after-println",
-                    "indent-inside-if"});
-            Map<String, Boolean> switchRules = new HashMap<>();
-            Map<String, Object> valueRules = new HashMap<>();
-            for (String rule : configFile.keySet()) {
-                if (switchRuleList.contains(rule)) {
-                    switchRules.put(rule, (Boolean) configFile.get(rule));
-                } else if (valueRuleList.contains(rule)) {
-                    valueRules.put(rule, configFile.get(rule));
-                }
-            }
-
-            // Translation
-            Map<String, Boolean> translatedSwitchRules = new HashMap<>();
-            Map<String, Object> translatedValueRules = new HashMap<>();
-
-            /* unused
-            "CharLimitPerLine" -> CharLimitPerLineRule()
-            "ClassNameCamel" -> ClassNameCamelCaseRule()
-             */
-
-            for (String rule : switchRules.keySet()) {
-                switch  (rule) {
-                    case "enforce-spacing-around-equals":
-                        translatedSwitchRules.put("NoSpaceBeforeEquals", !(Boolean) configFile.get(rule));
-                        translatedSwitchRules.put("NoSpaceAfterEquals", !(Boolean) configFile.get(rule));
-                        break;
-                    case "enforce-no-spacing-around-equals":
-                        translatedSwitchRules.put("NoSpaceBeforeEquals", (boolean) configFile.get(rule));
-                        translatedSwitchRules.put("NoSpaceAfterEquals", (Boolean) configFile.get(rule));
-                        break;
-                    case "enforce-spacing-before-colon-in-declaration":
-                        translatedSwitchRules.put("NoSpaceBeforeColon", (Boolean) configFile.get(rule));
-                        break;
-                    case "enforce-spacing-after-colon-in-declaration":
-                        translatedSwitchRules.put("NoSpaceAfterColon", (Boolean) configFile.get(rule));
-                        break;
-                    // Mandatory rules, they are always applied
-                    case "mandatory-single-space-separation", "if-brace-same-line",
-                         "mandatory-space-surrounding-operations", "mandatory-line-break-after-statement":
-                        break;
-                    case "if-brace-below-line":
-                        // This rule was not asked
-                        break;
-                }
-            }
-
-            for (String rule : valueRules.keySet()) {
-                switch (rule) {
-                    case "line-breaks-after-println":
-                        translatedValueRules.put("lineBreakBeforePrint", valueRules.get(rule));
-                        break;
-                    case "indent-inside-if":
-                        translatedValueRules.put("indentSize", valueRules.get(rule));
-                        break;
-                }
-            }
-
-            // Generate YAML structure
-            Map<String, Map<String, Object>> configuration = new HashMap<>();
-            Map<String, Object> rules = new HashMap<>();
-
-            rules.put("switch", translatedSwitchRules);
-            rules.put("setValue", translatedValueRules);
-
-            configuration.put("rules", rules);
-
-            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-            //print(mapper.writeValueAsString(configuration));
-            return mapper.writeValueAsString(configuration);
+        private String translateRule(Map<String, Object> configFile, File tempFile) throws IOException {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.writeValueAsString(configFile);
         }
 
         private String getDefaultFormatConfig() {
