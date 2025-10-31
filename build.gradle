@@ -45,7 +45,7 @@ dependencies {
     implementation 'IngsisTP:lexer:1.0.3'
     implementation 'IngsisTP:linter:1.0.3'
     implementation 'IngsisTP:parser:1.0.3'
-    implementation 'IngsisTP:formatter:1.0.48' //50 másnuevo
+    implementation 'IngsisTP:formatter:1.0.48' //50 másnuevo |48 - yellow submarine
     implementation 'IngsisTP:ast:1.0.3'
     implementation 'IngsisTP:token:1.0.3'
     implementation 'IngsisTP:tokendata:1.0.3'
