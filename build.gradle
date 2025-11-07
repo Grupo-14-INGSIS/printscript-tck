@@ -45,7 +45,7 @@ dependencies {
     implementation 'IngsisTP:lexer:1.0.24'
     implementation 'IngsisTP:linter:1.0.24'
     implementation 'IngsisTP:parser:1.0.24'
-    implementation 'IngsisTP:formatter:1.0.24'
+    implementation 'IngsisTP:formatter:1.0.45'
     implementation 'IngsisTP:ast:1.0.24'
     implementation 'IngsisTP:token:1.0.24'
     implementation 'IngsisTP:tokendata:1.0.24'

@@ -181,12 +181,10 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
             .newInstance(charSource);
 
-                print(3);
                 // 3. Hacer split para obtener tokens
                 Method splitMethod = lexerClass.getMethod("split", int.class);
                 splitMethod.invoke(lexer, 8192);
 
-                print(4);
                 // 4. Obtener la lista y crear tokens
                 Method getListMethod = lexerClass.getMethod("getList");
                 Object listField = getListMethod.invoke(lexer);
@@ -194,11 +192,11 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 Method createTokenMethod = lexerClass.getMethod("createToken", java.util.List.class);
                 Object container = createTokenMethod.invoke(lexer, listField);
 
-                print(5);
+
                 // 5. Crear archivo de configuración temporal
                 File configFile = createTempConfigFile(config);
 
-                print(6);
+
                 // 6. Crear formatter y ejecutar
                 Class<?> formatterClass = Class.forName("formatter.src.main.kotlin.Formatter");
                 Object formatter = formatterClass.getDeclaredConstructor().newInstance();
@@ -207,13 +205,13 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                         Class.forName("container.src.main.kotlin.Container"), URL.class);
                 Object formattedContainer = executeMethod.invoke(formatter, container, configFile.toURI().toURL());
 
-                print(7);
+
                 // 7. Convertir el container formateado de vuelta a string
                 String formattedCode = containerToString(formattedContainer);
                 writer.write(formattedCode);
                 writer.flush();
 
-                print("fin");
+
                 // Limpiar archivo temporal
                 configFile.delete();
             } catch (Exception e) {
@@ -245,7 +243,9 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         /** Takes a list of configuration from configFile and writes it to tempFile as a translated version of the rules. */
         private String translateRule(Map<String, Object> configFile, File tempFile) throws IOException {
             ObjectMapper mapper = new ObjectMapper();
-            return mapper.writeValueAsString(configFile);
+            String result = mapper.writeValueAsString(configFile);
+            System.out.println("Final config: " + result);
+            return result;
         }
 
         private String getDefaultFormatConfig() {
