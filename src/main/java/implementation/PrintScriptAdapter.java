@@ -273,8 +273,9 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                                 .newInstance(sourceCode);
         
                         Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-                        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
-                                .newInstance(charSource);
+                        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"),
+                                String.class)
+                                .newInstance(charSource, version);
         
                         // 3. Hacer split para obtener tokens
                         Method splitMethod = lexerClass.getMethod("split", int.class);
@@ -329,41 +330,48 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                     }
                 }
     private List<LintRule> createLintRules(InputStream config) {
-      // Aquí necesitarías crear las reglas basadas en la configuración
       List<LintRule> result = new ArrayList<>();
-
       try {
         String streamString = readInputStream(config);
-        System.out.println(streamString);
-        int index = streamString.indexOf("identifier_format");
-        if (index == -1){
-          return new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> configMap = mapper.readValue(streamString, new TypeReference<Map<String, Object>>() {});
+
+        // Handle "identifier_format" rule
+        if (configMap.containsKey("identifier_format")) {
+          String format = (String) configMap.get("identifier_format");
+          String kotlinFormat = "";
+          switch (format) {
+            case "camel case":
+              kotlinFormat = "camelCase";
+              break;
+            case "snake case":
+              kotlinFormat = "snake_case";
+              break;
+            default:
+              // Handle unknown format or default to a safe value
+              kotlinFormat = "camelCase"; // Defaulting to camelCase
+              break;
+          }
+          Class<?> identifierNamingRuleClass = Class.forName("linter.src.main.kotlin.rules.IdentifierNamingRule");
+          result.add((LintRule) identifierNamingRuleClass.getDeclaredConstructor(String.class).newInstance(kotlinFormat));
         }
-        int searchingIndex = index + 21;
 
-        StringBuilder option = new StringBuilder();
-        for (int i = searchingIndex; streamString.charAt(i) != '"'; i++){
-          option.append(streamString.charAt(i));
+        // Handle "mandatory-variable-or-literal-in-println" rule
+        if (configMap.containsKey("mandatory-variable-or-literal-in-println") && (Boolean) configMap.get("mandatory-variable-or-literal-in-println")) {
+          Class<?> printLnRuleClass = Class.forName("linter.src.main.kotlin.rules.PrintLnRule");
+          result.add((LintRule) printLnRuleClass.getDeclaredConstructor(boolean.class).newInstance(true));
         }
 
-        switch (option.toString()){
-          case "camel case":
-            option = new StringBuilder("camelCase");
-            break;
-          case "snake case":
-            option = new StringBuilder("snake_case");
-            break;
-          default:
+        // Handle "mandatory-variable-or-literal-in-readInput" rule
+        if (configMap.containsKey("mandatory-variable-or-literal-in-readInput") && (Boolean) configMap.get("mandatory-variable-or-literal-in-readInput")) {
+          Class<?> readInputRuleClass = Class.forName("linter.src.main.kotlin.rules.ReadInputRule");
+          result.add((LintRule) readInputRuleClass.getDeclaredConstructor(boolean.class).newInstance(true));
         }
 
-        System.out.println(option);
-
-        result.add(new IdentifierNamingRule(option.toString()));
-
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      } catch (Exception e) {
+        System.err.println("Error creating lint rules: " + e.getMessage());
+        e.printStackTrace();
       }
-
       return result;
     }
   }
