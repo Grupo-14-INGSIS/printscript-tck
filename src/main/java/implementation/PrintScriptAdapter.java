@@ -177,9 +177,10 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 Class<?> stringCharSourceClass = Class.forName("lexer.src.main.kotlin.StringCharSource");
                 Object charSource = stringCharSourceClass.getDeclaredConstructor(String.class).newInstance(sourceCode);
 
-        Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
-        Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"))
-            .newInstance(charSource);
+                Class<?> lexerClass = Class.forName("lexer.src.main.kotlin.Lexer");
+                Object lexer = lexerClass.getDeclaredConstructor(Class.forName("lexer.src.main.kotlin.CharSource"),
+                        String.class)
+                    .newInstance(charSource, version);
 
                 // 3. Hacer split para obtener tokens
                 Method splitMethod = lexerClass.getMethod("split", int.class);
@@ -242,9 +243,9 @@ public class PrintScriptAdapter implements PrintScriptFactory {
 
         /** Takes a list of configuration from configFile and writes it to tempFile as a translated version of the rules. */
         private String translateRule(Map<String, Object> configFile, File tempFile) throws IOException {
-            ObjectMapper mapper = new ObjectMapper();
-            String result = mapper.writeValueAsString(configFile);
-            System.out.println("Final config: " + result);
+            ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+            String result = yamlMapper.writeValueAsString(configFile);
+            System.out.println("Final config (YAML): \n" + result);
             return result;
         }
 
