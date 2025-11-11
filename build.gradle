@@ -41,23 +41,23 @@ repositories {
 // --- Dependencias ---
 dependencies {
     // Core PrintScript modules desde GitHub Packages
-    implementation 'IngsisTP:interpreter:1.0.60'
-    implementation 'IngsisTP:lexer:1.0.60'
-    implementation 'IngsisTP:linter:1.0.60'
-    implementation 'IngsisTP:parser:1.0.60'
-    implementation 'IngsisTP:formatter:1.0.60'
-    implementation 'IngsisTP:ast:1.0.60'
-    implementation 'IngsisTP:token:1.0.60'
-    implementation 'IngsisTP:tokendata:1.0.60'
-    implementation 'IngsisTP:container:1.0.60'
-    implementation 'IngsisTP:executor:1.0.60'
-    implementation 'IngsisTP:inputprovider:1.0.60'
-    implementation 'IngsisTP:cli:1.0.60'
+    implementation 'IngsisTP:interpreter:1.0.63'
+    implementation 'IngsisTP:lexer:1.0.63'
+    implementation 'IngsisTP:linter:1.0.63'
+    implementation 'IngsisTP:parser:1.0.63'
+    implementation 'IngsisTP:formatter:1.0.63'
+    implementation 'IngsisTP:ast:1.0.63'
+    implementation 'IngsisTP:token:1.0.63'
+    implementation 'IngsisTP:tokendata:1.0.63'
+    implementation 'IngsisTP:container:1.0.63'
+    implementation 'IngsisTP:executor:1.0.63'
+    implementation 'IngsisTP:inputprovider:1.0.63'
+    implementation 'IngsisTP:cli:1.0.63'
 
     // Opcionales
-    implementation 'IngsisTP:analyzer:1.0.60'
-    implementation 'IngsisTP:formatteraction:1.0.60'
-    implementation 'IngsisTP:progress:1.0.60'
+    implementation 'IngsisTP:analyzer:1.0.63'
+    implementation 'IngsisTP:formatteraction:1.0.63'
+    implementation 'IngsisTP:progress:1.0.63'
 
     // Test dependencies
     testImplementation 'junit:junit:4.13.2'
