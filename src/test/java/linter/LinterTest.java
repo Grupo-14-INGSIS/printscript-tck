@@ -50,11 +50,19 @@ public class LinterTest {
 
     @Test
     public void testLint() throws IOException {
+        System.out.println("--- Running test: " + this.name + " ---");
+        String configContent = new String(Files.readAllBytes(this.config.toPath()));
+        System.out.println("Config content:\n" + configContent);
+
         final var fileInputStream = new FileInputStream(file);
         ErrorCollector errorCollector = new ErrorCollector();
         final var shouldBeValid = this.name.startsWith("valid");
         final var configInputStream = new FileInputStream(this.config);
         linter.lint(fileInputStream, version, configInputStream, errorCollector);
+        
+        System.out.println("Errors found: " + errorCollector.getErrors());
+        System.out.println("--- Test finished: " + this.name + " ---\n");
+
         final Matcher<List<String>> errorMatcher = getErrorMatcherForExpectedResult(shouldBeValid);
         assertThat(errorCollector.getErrors(), errorMatcher);
     }
