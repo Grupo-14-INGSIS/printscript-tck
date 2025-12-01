@@ -42,23 +42,23 @@ repositories {
 dependencies {
     // Core PrintScript modules desde GitHub Packages
     //Version 72 works for Linter, Formatter and Interpreter Validator
-    implementation 'IngsisTP:interpreter:1.0.75'
-    implementation 'IngsisTP:lexer:1.0.75'
-    implementation 'IngsisTP:linter:1.0.75'
-    implementation 'IngsisTP:parser:1.0.75'
-    implementation 'IngsisTP:formatter:1.0.75'
-    implementation 'IngsisTP:ast:1.0.75'
-    implementation 'IngsisTP:token:1.0.75'
-    implementation 'IngsisTP:tokendata:1.0.75'
-    implementation 'IngsisTP:container:1.0.75'
-    implementation 'IngsisTP:executor:1.0.75'
-    implementation 'IngsisTP:inputprovider:1.0.75'
-    implementation 'IngsisTP:cli:1.0.75'
+    implementation 'IngsisTP:interpreter:1.0.77'
+    implementation 'IngsisTP:lexer:1.0.77'
+    implementation 'IngsisTP:linter:1.0.77'
+    implementation 'IngsisTP:parser:1.0.77'
+    implementation 'IngsisTP:formatter:1.0.77'
+    implementation 'IngsisTP:ast:1.0.77'
+    implementation 'IngsisTP:token:1.0.77'
+    implementation 'IngsisTP:tokendata:1.0.77'
+    implementation 'IngsisTP:container:1.0.77'
+    implementation 'IngsisTP:executor:1.0.77'
+    implementation 'IngsisTP:inputprovider:1.0.77'
+    implementation 'IngsisTP:cli:1.0.77'
 
     // Opcionales
-    implementation 'IngsisTP:analyzer:1.0.75'
-    implementation 'IngsisTP:formatteraction:1.0.75'
-    implementation 'IngsisTP:progress:1.0.75'
+    implementation 'IngsisTP:analyzer:1.0.77'
+    implementation 'IngsisTP:formatteraction:1.0.77'
+    implementation 'IngsisTP:progress:1.0.77'
 
     // Test dependencies
     testImplementation 'junit:junit:4.13.2'
