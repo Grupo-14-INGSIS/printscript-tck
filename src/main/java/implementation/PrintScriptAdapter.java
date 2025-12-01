@@ -59,7 +59,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 Lexer lexer = new Lexer(new StringCharSource(sourceCode), version);
                 List<Container> statements = lexer.lexIntoStatements();
 
-                inputprovider.src.main.kotlin.InputProvider inputProviderAdapter = createInputProviderAdapter(provider);
+                inputprovider.src.main.kotlin.InputProvider inputProviderAdapter = createInputProviderAdapter(provider, emitter);
                 Function1<Object, Unit> printer = createPrinterAdapter(emitter);
 
                 Interpreter interpreter = new Interpreter(version, inputProviderAdapter, printer);
@@ -74,17 +74,18 @@ public class PrintScriptAdapter implements PrintScriptFactory {
             }
         }
 
-        private inputprovider.src.main.kotlin.InputProvider createInputProviderAdapter(InputProvider tckProvider) {
+        private inputprovider.src.main.kotlin.InputProvider createInputProviderAdapter(InputProvider tckProvider, PrintEmitter emitter) {
             if (tckProvider == null) return null;
             return new inputprovider.src.main.kotlin.InputProvider() {
                 @Override
                 public String readInput(String message) {
+                    emitter.print(message);
                     return tckProvider.input(message);
                 }
 
                 @Override
                 public String readEnv(String name) {
-                    return null; // TCK provider doesn't support this.
+                    return System.getenv(name);
                 }
             };
         }
