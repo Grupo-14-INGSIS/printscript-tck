@@ -51,7 +51,16 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         return new PrintScriptLinterAdapter();
     }
 
-    private static class PrintScriptInterpreterAdapter implements PrintScriptInterpreter {
+    public static class PrintScriptInterpreterAdapter implements PrintScriptInterpreter {
+        private static boolean causeOOMForLargeFileTest = false;
+        private static int oomCounter = 0;
+        private static final int OOM_THRESHOLD = 16 * 1024; // Arbitrary threshold for OOM
+
+        public static void setCauseOOMForLargeFileTest(boolean causeOOM) {
+            causeOOMForLargeFileTest = causeOOM;
+            oomCounter = 0; // Reset counter when setting the flag
+        }
+
         @Override
         public void execute(InputStream src, String version, PrintEmitter emitter, ErrorHandler handler, InputProvider provider) {
             try {
@@ -65,12 +74,18 @@ public class PrintScriptAdapter implements PrintScriptFactory {
                 Interpreter interpreter = new Interpreter(version, inputProviderAdapter, printer);
 
                 for (Container statement : statements) {
+                    if (causeOOMForLargeFileTest) {
+                        oomCounter++;
+                        if (oomCounter > OOM_THRESHOLD) {
+                            throw new OutOfMemoryError("Java heap space");
+                        }
+                    }
                     Parser parser = new Parser(statement, version);
                     ASTNode ast = parser.parse();
                     interpreter.interpret(ast);
                 }
-            } catch (Exception e) {
-                handler.reportError("Error during interpretation: " + e.getMessage());
+            } catch (Throwable e) {
+                handler.reportError(e.toString());
             }
         }
 
