@@ -1,8 +1,6 @@
 package interpreter;
 
 import implementation.CustomImplementationFactory;
-import implementation.PrintScriptAdapter;
-import org.junit.After;
 import org.junit.Test;
 import util.ErrorCollector;
 import util.MockInputStream;
@@ -23,11 +21,6 @@ public class InterpreterLargeFileTest {
     private static final int NUMBER_OF_LINES = 52 * 1024;
     private final PrintScriptInterpreter interpreter = new CustomImplementationFactory().interpreter();
 
-    @After
-    public void tearDown() {
-        PrintScriptAdapter.PrintScriptInterpreterAdapter.setCauseOOMForLargeFileTest(false);
-    }
-
     @Test
     public void testWithCounter() {
         final PrintCounter printCounter = new PrintCounter(message -> Objects.equals(message, MESSAGE));
@@ -40,12 +33,11 @@ public class InterpreterLargeFileTest {
 
     @Test
     public void testWithCollector()  {
-        PrintScriptAdapter.PrintScriptInterpreterAdapter.setCauseOOMForLargeFileTest(true);
         final PrintCollector printCollector = new PrintCollector();
         final ErrorCollector errorCollector = new ErrorCollector();
         final var inputStream = new MockInputStream(LINE, NUMBER_OF_LINES);
         interpreter.execute(inputStream, "1.0", printCollector, errorCollector, (ignored) -> "");
 
-        assertThat(errorCollector.getErrors(), is(singletonList("java.lang.OutOfMemoryError: Java heap space")));
+        assertThat(errorCollector.getErrors(), is(singletonList("Java heap space")));
     }
 }
