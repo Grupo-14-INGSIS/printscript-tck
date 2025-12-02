@@ -41,24 +41,24 @@ repositories {
 // --- Dependencias ---
 dependencies {
     // Core PrintScript modules desde GitHub Packages
-    // Version 80 works for Linter, Formatter and Interpreter excepct por LargeFileTest
-    implementation 'IngsisTP:interpreter:1.0.80'
-    implementation 'IngsisTP:lexer:1.0.80'
-    implementation 'IngsisTP:linter:1.0.80'
-    implementation 'IngsisTP:parser:1.0.80'
-    implementation 'IngsisTP:formatter:1.0.80'
-    implementation 'IngsisTP:ast:1.0.80'
-    implementation 'IngsisTP:token:1.0.80'
-    implementation 'IngsisTP:tokendata:1.0.80'
-    implementation 'IngsisTP:container:1.0.80'
-    implementation 'IngsisTP:executor:1.0.80'
-    implementation 'IngsisTP:inputprovider:1.0.80'
-    implementation 'IngsisTP:cli:1.0.80'
+    // Version 86 passes everything
+    implementation 'IngsisTP:interpreter:1.0.86'
+    implementation 'IngsisTP:lexer:1.0.86'
+    implementation 'IngsisTP:linter:1.0.86'
+    implementation 'IngsisTP:parser:1.0.86'
+    implementation 'IngsisTP:formatter:1.0.86'
+    implementation 'IngsisTP:ast:1.0.86'
+    implementation 'IngsisTP:token:1.0.86'
+    implementation 'IngsisTP:tokendata:1.0.86'
+    implementation 'IngsisTP:container:1.0.86'
+    implementation 'IngsisTP:executor:1.0.86'
+    implementation 'IngsisTP:inputprovider:1.0.86'
+    implementation 'IngsisTP:cli:1.0.86'
 
     // Opcionales
-    implementation 'IngsisTP:analyzer:1.0.80'
-    implementation 'IngsisTP:formatteraction:1.0.80'
-    implementation 'IngsisTP:progress:1.0.80'
+    implementation 'IngsisTP:analyzer:1.0.86'
+    implementation 'IngsisTP:formatteraction:1.0.86'
+    implementation 'IngsisTP:progress:1.0.86'
 
     // Test dependencies
     testImplementation 'junit:junit:4.13.2'
@@ -100,8 +100,8 @@ test {
         showStackTraces = true
     }
 
-    // Aumentar memoria para tests
-    jvmArgs '-Xmx1g'
+    minHeapSize = "5m"
+    maxHeapSize = "7m"
 
     // Agregar el directorio de tests si existe
     if (file('src/test/java').exists()) {

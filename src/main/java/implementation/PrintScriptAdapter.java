@@ -55,22 +55,25 @@ public class PrintScriptAdapter implements PrintScriptFactory {
         @Override
         public void execute(InputStream src, String version, PrintEmitter emitter, ErrorHandler handler, InputProvider provider) {
             try {
-                String sourceCode = readInputStream(src);
-                Lexer lexer = new Lexer(new StringCharSource(sourceCode), version);
-                List<Container> statements = lexer.lexIntoStatements();
+                Lexer lexer = Lexer.Companion.from(src, version);
 
                 inputprovider.src.main.kotlin.InputProvider inputProviderAdapter = createInputProviderAdapter(provider, emitter);
                 Function1<Object, Unit> printer = createPrinterAdapter(emitter);
-
                 Interpreter interpreter = new Interpreter(version, inputProviderAdapter, printer);
 
-                for (Container statement : statements) {
+                java.util.Iterator<Container> statementIterator = lexer.lexIntoStatements().iterator();
+                while (statementIterator.hasNext()) {
+                    Container statement = statementIterator.next();
                     Parser parser = new Parser(statement, version);
                     ASTNode ast = parser.parse();
                     interpreter.interpret(ast);
                 }
-            } catch (Exception e) {
-                handler.reportError("Error during interpretation: " + e.getMessage());
+            } catch (Throwable t) {
+                if (t instanceof OutOfMemoryError) {
+                    handler.reportError("Java heap space");
+                } else {
+                    handler.reportError("Error during interpretation: " + t.getMessage());
+                }
             }
         }
 
@@ -108,7 +111,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
             try {
                 String sourceCode = readInputStream(src);
                 Lexer lexer = new Lexer(new StringCharSource(sourceCode), version);
-                List<Container> statements = lexer.lexIntoStatements();
+                List<Container> statements = kotlin.sequences.SequencesKt.toList(lexer.lexIntoStatements());
                 File configFile = createTempConfigFile(config);
                 Formatter formatter = new Formatter();
                 List<Container> formattedStatements = formatter.execute(statements, configFile);
@@ -145,7 +148,7 @@ public class PrintScriptAdapter implements PrintScriptFactory {
             try {
                 String sourceCode = readInputStream(src);
                 Lexer lexer = new Lexer(new StringCharSource(sourceCode), version);
-                List<Container> statements = lexer.lexIntoStatements();
+                List<Container> statements = kotlin.sequences.SequencesKt.toList(lexer.lexIntoStatements());
 
                 List<ASTNode> asts = new ArrayList<>();
                 for (Container statement : statements) {
