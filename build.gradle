@@ -32,8 +32,8 @@ repositories {
         name = 'GitHubPackages'
         url = uri("https://maven.pkg.github.com/Grupo-14-INGSIS/PrintScript-Tools")
         credentials {
-            username = System.getenv("USERNAME") ?: dotenvProps.getProperty("USERNAME") ?: ""
-            password = System.getenv("TOKEN") ?: dotenvProps.getProperty("TOKEN") ?: ""
+            username = dotenvProps.getProperty("GITHUB_USER") ?: dotenvProps.getProperty("USERNAME") ?: System.getenv("GITHUB_USER") ?: System.getenv("USERNAME") ?: ""
+            password = dotenvProps.getProperty("GITHUB_TOKEN") ?: dotenvProps.getProperty("TOKEN") ?: System.getenv("GITHUB_TOKEN") ?: System.getenv("TOKEN") ?: ""
         }
     }
 }
@@ -42,17 +42,16 @@ repositories {
 dependencies {
     // Core PrintScript modules desde GitHub Packages
     // Version 86 passes everything
-    implementation 'IngsisTP:interpreter:1.0.86'
-    implementation 'IngsisTP:lexer:1.0.86'
-    implementation 'IngsisTP:linter:1.0.86'
-    implementation 'IngsisTP:parser:1.0.86'
-    implementation 'IngsisTP:formatter:1.0.86'
-    implementation 'IngsisTP:ast:1.0.86'
-    implementation 'IngsisTP:token:1.0.86'
-    implementation 'IngsisTP:tokendata:1.0.86'
-    implementation 'IngsisTP:container:1.0.86'
-    implementation 'IngsisTP:executor:1.0.86'
-    implementation 'IngsisTP:inputprovider:1.0.86'
+    implementation 'IngsisTP:interpreter:2.0.1'
+    implementation 'IngsisTP:lexer:2.0.1'
+    implementation 'IngsisTP:linter:2.0.1'
+    implementation 'IngsisTP:parser:2.0.1'
+    implementation 'IngsisTP:formatter:2.0.1'
+    implementation 'IngsisTP:ast:2.0.1'
+    implementation 'IngsisTP:token:2.0.1'
+    //antes la 86
+    //más nueva funcional: 91
+    //refactor: 94
 
     // Test dependencies
     testImplementation 'junit:junit:4.13.2'
